@@ -1,0 +1,139 @@
+#!/bin/sh /etc/rc.common
+
+START=60
+STOP=10
+
+USE_PROCD=1
+PROG=/usr/bin/alfis
+CONF_FILE=/etc/alfis/alfis.toml
+
+# Make service controllable by /etc/init.d and LuCI
+EXTRA_COMMANDS="status"
+EXTRA_HELP="	status	Show service status"
+
+
+boot() {
+	start "$@"
+}
+
+generate_config() {
+	config_load alfis
+	
+	local origin check_blocks net_listen net_public net_yggdrasil_only net_peers
+	local dns_listen dns_threads dns_forwarders dns_bootstraps
+	local mining_threads mining_lower
+	
+	# Get configuration values
+	config_get origin config origin "0000001D2A77D63477172678502E51DE7F346061FF7EB188A2445ECA3FC0780E"
+	config_get check_blocks config check_blocks "8"
+	config_get net_listen config net_listen "[::]:4244"
+	config_get_bool net_public config net_public 1
+	config_get_bool net_yggdrasil_only config net_yggdrasil_only 1
+	config_get net_peers config net_peers "peer-v4.alfis.name:4244
+peer-v6.alfis.name:4244
+peer-ygg.alfis.name:4244"
+	config_get dns_listen config dns_listen "127.0.0.1:5353"
+	config_get dns_threads config dns_threads "4"
+	config_get dns_forwarders config dns_forwarders "https://dns.adguard.com/dns-query"
+	config_get dns_bootstraps config dns_bootstraps "9.9.9.9:53
+94.140.14.14:53"
+	config_get mining_threads config mining_threads "0"
+	config_get_bool mining_lower config mining_lower 1
+	
+	# Ensure config directory exists
+	[ -d /etc/alfis ] || mkdir -p /etc/alfis
+	
+	# Generate TOML configuration
+	cat > $CONF_FILE << EOF
+# The hash of first block in a chain to know with which nodes to work
+origin = "$origin"
+# Paths to your key files to load automatically
+key_files = ["key1.toml", "key2.toml", "key3.toml", "key4.toml", "key5.toml"]
+# How many last blocks to check on start
+check_blocks = $check_blocks
+
+# Network settings
+[net]
+# All bootstrap nodes
+peers = [$(echo "$net_peers" | sed 's/^/"/;s/$/",/;$s/,$//' | tr '\n' ' ')]
+# Your node will listen on that address for other nodes to connect
+listen = "$net_listen"
+# Set true if you want your IP to participate in peer-exchange, or false otherwise
+public = $([ "$net_public" = "1" ] && echo "true" || echo "false")
+# Allow connections to/from Yggdrasil only (https://yggdrasil-network.github.io)
+yggdrasil_only = $([ "$net_yggdrasil_only" = "1" ] && echo "true" || echo "false")
+
+# DNS resolver options
+[dns]
+# Your DNS resolver will be listening on this address and port (Usual port is 53)
+listen = "$dns_listen"
+# How many threads to spawn by DNS server
+threads = $dns_threads
+# DNS forwarders
+forwarders = [$(echo "$dns_forwarders" | sed 's/^/"/;s/$/",/;$s/,$//' | tr '\n' ' ')]
+
+# Bootstrap DNS-servers to resolve domains of DoH providers
+bootstraps = [$(echo "$dns_bootstraps" | sed 's/^/"/;s/$/",/;$s/,$//' | tr '\n' ' ')]
+
+# Hosts file support (resolve local names or block ads)
+#hosts = ["system", "adblock.txt"]
+
+#Mining options
+[mining]
+# How many CPU threads to spawn for mining, zero = number of CPU cores
+threads = $mining_threads
+# Set lower priority for mining threads
+lower = $([ "$mining_lower" = "1" ] && echo "true" || echo "false")
+EOF
+}
+
+start_service() {
+	# Always generate configuration when starting (whether from UCI or system)
+	generate_config
+	
+	config_load alfis
+	local enabled
+	config_get_bool enabled config enabled 0
+	[ "$enabled" -eq 0 ] && return 1
+	
+	# Ensure directories exist and have correct permissions
+	[ -d /var/lib/alfis ] || mkdir -p /var/lib/alfis
+	[ -d /var/lib/alfis/zones ] || mkdir -p /var/lib/alfis/zones
+	chown -R alfis:alfis /var/lib/alfis
+	
+	procd_open_instance
+	procd_set_param command $PROG -c $CONF_FILE -w /etc/alfis
+	procd_set_param respawn 3600 5 5
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	procd_set_param user alfis
+	procd_close_instance
+}
+
+service_triggers() {
+	procd_add_reload_trigger "alfis"
+}
+
+status() {
+	local enabled
+	config_load alfis
+	config_get_bool enabled config enabled 0
+	
+	if [ "$enabled" -eq 1 ]; then
+		if pgrep -f "$PROG" > /dev/null; then
+			echo "alfis is enabled and running"
+			return 0
+		else
+			echo "alfis is enabled but not running"
+			return 1
+		fi
+	else
+		echo "alfis is disabled"
+		return 3
+	fi
+}
+
+reload_service() {
+	generate_config
+	procd_send_signal alfis
+}

@@ -1,0 +1,25 @@
+#!/bin/sh
+
+# Ensure alfis config exists
+if ! uci -q get alfis.config >/dev/null; then
+	uci set alfis.config=alfis
+	uci set alfis.config.enabled='0'
+	uci set alfis.config.origin='0000001D2A77D63477172678502E51DE7F346061FF7EB188A2445ECA3FC0780E'
+	uci set alfis.config.check_blocks='8'
+	uci set alfis.config.net_listen='[::]:4244'
+	uci set alfis.config.net_public='1'
+	uci set alfis.config.net_yggdrasil_only='1'
+	uci set alfis.config.net_peers='peer-v4.alfis.name:4244
+peer-v6.alfis.name:4244
+peer-ygg.alfis.name:4244'
+	uci set alfis.config.dns_listen='127.0.0.1:5353'
+	uci set alfis.config.dns_threads='4'
+	uci set alfis.config.dns_forwarders='https://dns.adguard.com/dns-query'
+	uci set alfis.config.dns_bootstraps='9.9.9.9:53
+94.140.14.14:53'
+	uci set alfis.config.mining_threads='0'
+	uci set alfis.config.mining_lower='1'
+	uci commit alfis
+fi
+
+exit 0

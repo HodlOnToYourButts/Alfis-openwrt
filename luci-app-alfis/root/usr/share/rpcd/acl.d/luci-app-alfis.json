@@ -1,0 +1,23 @@
+{
+	"luci-app-alfis": {
+		"description": "Grant access to Alfis DNS configuration",
+		"read": {
+			"uci": [ "alfis" ],
+			"ubus": {
+				"service": [ "list" ]
+			},
+			"file": {
+				"/etc/alfis/alfis.toml": [ "read" ]
+			}
+		},
+		"write": {
+			"uci": [ "alfis" ],
+			"ubus": {
+				"service": [ "start", "stop", "restart" ]
+			},
+			"file": {
+				"/etc/alfis/alfis.toml": [ "write" ]
+			}
+		}
+	}
+}

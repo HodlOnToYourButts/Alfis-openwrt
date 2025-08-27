@@ -1,0 +1,13 @@
+{
+	"admin/services/alfis": {
+		"title": "Alfis DNS",
+		"order": 60,
+		"action": {
+			"type": "view",
+			"path": "alfis/overview"
+		},
+		"depends": {
+			"acl": [ "luci-app-alfis" ]
+		}
+	}
+}
