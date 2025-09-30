@@ -140,6 +140,7 @@ jobs:
 
       - name: Generate repository index
         run: |
+          # Generate README.md
           cat > repo/README.md << 'EOF'
           # Alfis OpenWrt Package Repository
 
@@ -170,7 +171,7 @@ jobs:
 
           for arch_dir in repo/*/; do
             arch=$(basename "$arch_dir")
-            echo "- $arch" >> repo/README.md
+            echo "- [$arch]($arch/)" >> repo/README.md
           done
 
           cat >> repo/README.md << 'EOF'
@@ -190,6 +191,36 @@ jobs:
           - Build Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
           - Commit: ${{ github.sha }}
           EOF
+
+          # Generate main index.html from template
+          ARCH_LIST=""
+          for arch_dir in repo/*/; do
+            arch=$(basename "$arch_dir")
+            ARCH_LIST="${ARCH_LIST}    <li><a href=\"${arch}/\">${arch}</a></li>\n"
+          done
+
+          sed -e "s|{{OPENWRT_VERSION}}|${{ env.OPENWRT_VERSION }}|g" \
+              -e "s|{{ARCH_LIST}}|${ARCH_LIST}|g" \
+              -e "s|{{BUILD_DATE}}|$(date -u +"%Y-%m-%d %H:%M:%S UTC")|g" \
+              -e "s|{{COMMIT_SHA}}|${{ github.sha }}|g" \
+              .github/templates/index.html > repo/index.html
+
+          # Generate index.html for each architecture directory
+          for arch_dir in repo/*/; do
+            arch=$(basename "$arch_dir")
+            PACKAGE_LIST=""
+            for file in "$arch_dir"/*.ipk; do
+              if [ -f "$file" ]; then
+                filename=$(basename "$file")
+                size=$(ls -lh "$file" | awk '{print $5}')
+                PACKAGE_LIST="${PACKAGE_LIST}      <tr><td><a href=\"${filename}\">${filename}</a></td><td class=\"size\">${size}</td></tr>\n"
+              fi
+            done
+
+            sed -e "s|{{ARCH}}|${arch}|g" \
+                -e "s|{{PACKAGE_LIST}}|${PACKAGE_LIST}|g" \
+                .github/templates/arch-index.html > "$arch_dir/index.html"
+          done
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
