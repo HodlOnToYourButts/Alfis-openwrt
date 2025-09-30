@@ -95,6 +95,13 @@ jobs:
       - name: Generate package index
         run: |
           cd artifacts/${{ matrix.arch.arch }}
+          # Create a wrapper for sha256 if it doesn't exist
+          if ! command -v sha256 &> /dev/null; then
+            echo '#!/bin/sh' > /tmp/sha256
+            echo 'sha256sum "$@" | cut -d" " -f1' >> /tmp/sha256
+            chmod +x /tmp/sha256
+            export PATH="/tmp:$PATH"
+          fi
           ../../openwrt-sdk/scripts/ipkg-make-index.sh . > Packages
           gzip -k Packages
 
