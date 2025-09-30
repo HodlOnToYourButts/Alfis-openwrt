@@ -1,0 +1,188 @@
+name: Build OpenWrt Packages
+
+on:
+  push:
+    branches: [ master, develop ]
+  pull_request:
+    branches: [ master, develop ]
+  workflow_dispatch:
+
+env:
+  OPENWRT_VERSION: "24.10"
+
+jobs:
+  build:
+    name: Build ${{ matrix.arch }}
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+          - arch: aarch64_generic
+            sdk: aarch64_generic
+          - arch: arm_cortex-a7_neon-vfpv4
+            sdk: arm_cortex-a7_neon-vfpv4
+          - arch: x86_64
+            sdk: x86_64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential clang flex bison g++ gawk \
+            gcc-multilib g++-multilib gettext git libncurses-dev libssl-dev \
+            python3-setuptools rsync swig unzip zlib1g-dev file wget curl
+
+      - name: Download OpenWrt SDK
+        run: |
+          SDK_URL="https://downloads.openwrt.org/releases/${{ env.OPENWRT_VERSION }}/targets/"
+
+          # Determine target/subtarget based on arch
+          case "${{ matrix.arch.arch }}" in
+            aarch64_generic)
+              TARGET="armsr/armv8"
+              ;;
+            arm_cortex-a7_neon-vfpv4)
+              TARGET="bcm27xx/bcm2709"
+              ;;
+            x86_64)
+              TARGET="x86/64"
+              ;;
+          esac
+
+          SDK_FILE=$(curl -s "${SDK_URL}${TARGET}/" | grep -o 'openwrt-sdk-.*linux-x86_64\.tar\.xz' | head -n1)
+          wget "${SDK_URL}${TARGET}/${SDK_FILE}"
+          tar xf "${SDK_FILE}"
+          SDK_DIR=$(tar tf "${SDK_FILE}" | head -n1 | cut -d'/' -f1)
+          echo "SDK_DIR=${SDK_DIR}" >> $GITHUB_ENV
+          mv "${SDK_DIR}" openwrt-sdk
+
+      - name: Update feeds
+        run: |
+          cd openwrt-sdk
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Copy packages to SDK
+        run: |
+          mkdir -p openwrt-sdk/package/alfis-packages
+          cp -r alfis openwrt-sdk/package/alfis-packages/
+          cp -r luci-app-alfis openwrt-sdk/package/alfis-packages/
+
+      - name: Configure build
+        run: |
+          cd openwrt-sdk
+          echo "CONFIG_PACKAGE_alfis=m" >> .config
+          echo "CONFIG_PACKAGE_luci-app-alfis=m" >> .config
+          make defconfig
+
+      - name: Build packages
+        run: |
+          cd openwrt-sdk
+          make package/alfis-packages/alfis/compile V=s -j$(nproc) || make package/alfis-packages/alfis/compile V=s -j1
+          make package/alfis-packages/luci-app-alfis/compile V=s -j$(nproc) || make package/alfis-packages/luci-app-alfis/compile V=s -j1
+          make package/index
+
+      - name: Collect packages
+        run: |
+          mkdir -p artifacts/${{ matrix.arch.arch }}
+          find openwrt-sdk/bin/packages -name '*.ipk' -exec cp {} artifacts/${{ matrix.arch.arch }}/ \;
+
+      - name: Generate package index
+        run: |
+          cd artifacts/${{ matrix.arch.arch }}
+          ../../openwrt-sdk/scripts/ipkg-make-index.sh . > Packages
+          gzip -k Packages
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: packages-${{ matrix.arch.arch }}
+          path: artifacts/${{ matrix.arch.arch }}/*
+
+  publish:
+    name: Publish Package Repository
+    needs: build
+    runs-on: ubuntu-22.04
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: packages
+
+      - name: Organize repository
+        run: |
+          mkdir -p repo
+          for arch_dir in packages/packages-*; do
+            arch=$(basename "$arch_dir" | sed 's/packages-//')
+            mkdir -p "repo/$arch"
+            cp "$arch_dir"/* "repo/$arch/"
+          done
+
+      - name: Generate repository index
+        run: |
+          cat > repo/README.md << 'EOF'
+          # Alfis OpenWrt Package Repository
+
+          This repository contains pre-built Alfis packages for OpenWrt ${{ env.OPENWRT_VERSION }}.
+
+          ## Installation
+
+          Add this repository to your OpenWrt device:
+
+          ```sh
+          # Determine your architecture
+          ARCH=$(opkg print-architecture | awk '{print $2}' | tail -1)
+
+          # Add the repository
+          echo "src/gz alfis https://hodlontoyourbutts.github.io/Alfis-openwrt/$ARCH" >> /etc/opkg/customfeeds.conf
+
+          # Update package lists
+          opkg update
+
+          # Install packages
+          opkg install alfis
+          opkg install luci-app-alfis
+          ```
+
+          ## Supported Architectures
+
+          EOF
+
+          for arch_dir in repo/*/; do
+            arch=$(basename "$arch_dir")
+            echo "- $arch" >> repo/README.md
+          done
+
+          cat >> repo/README.md << 'EOF'
+
+          ## Manual Installation
+
+          Download the appropriate `.ipk` files for your architecture and install:
+
+          ```sh
+          opkg install alfis_*.ipk
+          opkg install luci-app-alfis_*.ipk
+          ```
+
+          ## Build Information
+
+          - OpenWrt Version: ${{ env.OPENWRT_VERSION }}
+          - Build Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          - Commit: ${{ github.sha }}
+          EOF
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./repo
+          force_orphan: true
