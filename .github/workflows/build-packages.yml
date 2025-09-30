@@ -10,6 +10,9 @@ on:
 env:
   OPENWRT_VERSION: "24.10.3"
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build ${{ matrix.arch }}
