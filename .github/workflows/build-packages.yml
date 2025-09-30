@@ -80,6 +80,8 @@ jobs:
           make defconfig
 
       - name: Build packages
+        env:
+          CI: false
         run: |
           cd openwrt-sdk
           make package/alfis-packages/alfis/compile V=s -j$(nproc) || make package/alfis-packages/alfis/compile V=s -j1
