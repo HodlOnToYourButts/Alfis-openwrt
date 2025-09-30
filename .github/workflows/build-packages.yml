@@ -80,10 +80,10 @@ jobs:
           make defconfig
 
       - name: Build packages
-        env:
-          CI: false
         run: |
           cd openwrt-sdk
+          # Unset CI environment variables that Rust detects
+          unset CI GITHUB_ACTIONS GITHUB_RUN_ID
           make package/alfis-packages/alfis/compile V=s -j$(nproc) || make package/alfis-packages/alfis/compile V=s -j1
           make package/alfis-packages/luci-app-alfis/compile V=s -j$(nproc) || make package/alfis-packages/luci-app-alfis/compile V=s -j1
           make package/index
