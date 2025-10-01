@@ -25,8 +25,8 @@
   <h2>Installation</h2>
   <p>Add this repository to your OpenWrt device:</p>
   <pre><code># Download and install the signing key
-wget -O /etc/opkg/keys/$(sha256sum signing-key.pub | cut -d' ' -f1) \
-  https://hodlontoyourbutts.github.io/Alfis-openwrt/signing-key.pub
+wget -O /tmp/signing-key.pub https://hodlontoyourbutts.github.io/Alfis-openwrt/signing-key.pub
+opkg-key add /tmp/signing-key.pub
 
 # Determine your architecture
 ARCH=$(opkg print-architecture | awk '{print $2}' | tail -1)
@@ -38,8 +38,7 @@ echo "src/gz alfis https://hodlontoyourbutts.github.io/Alfis-openwrt/$ARCH" >> /
 opkg update
 
 # Install packages
-opkg install alfis
-opkg install luci-app-alfis</code></pre>
+opkg install alfis luci-app-alfis</code></pre>
 
   <h2>Supported Architectures</h2>
   <ul>

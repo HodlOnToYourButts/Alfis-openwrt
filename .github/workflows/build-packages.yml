@@ -83,7 +83,9 @@ jobs:
       - name: Collect packages
         run: |
           mkdir -p artifacts/${{ matrix.arch.arch }}
-          find openwrt-sdk/bin/packages -name '*.ipk' -exec cp {} artifacts/${{ matrix.arch.arch }}/ \;
+          # Only collect alfis packages, not SDK dependencies
+          find openwrt-sdk/bin/packages -name 'alfis_*.ipk' -exec cp {} artifacts/${{ matrix.arch.arch }}/ \;
+          find openwrt-sdk/bin/packages -name 'luci-app-alfis_*.ipk' -exec cp {} artifacts/${{ matrix.arch.arch }}/ \;
 
       - name: Generate package index and sign
         env:
