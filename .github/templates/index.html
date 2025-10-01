@@ -24,7 +24,11 @@
 
   <h2>Installation</h2>
   <p>Add this repository to your OpenWrt device:</p>
-  <pre><code># Determine your architecture
+  <pre><code># Download and install the signing key
+wget -O /etc/opkg/keys/$(sha256sum signing-key.pub | cut -d' ' -f1) \
+  https://hodlontoyourbutts.github.io/Alfis-openwrt/signing-key.pub
+
+# Determine your architecture
 ARCH=$(opkg print-architecture | awk '{print $2}' | tail -1)
 
 # Add the repository

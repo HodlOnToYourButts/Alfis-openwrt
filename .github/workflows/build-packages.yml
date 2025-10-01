@@ -95,7 +95,9 @@ jobs:
           mkdir -p artifacts/${{ matrix.arch.arch }}
           find openwrt-sdk/bin/packages -name '*.ipk' -exec cp {} artifacts/${{ matrix.arch.arch }}/ \;
 
-      - name: Generate package index
+      - name: Generate package index and sign
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
         run: |
           cd artifacts/${{ matrix.arch.arch }}
           # Create a wrapper for sha256 if it doesn't exist
@@ -105,8 +107,19 @@ jobs:
             chmod +x /tmp/sha256
             export PATH="/tmp:$PATH"
           fi
+
+          # Generate package index
           ../../openwrt-sdk/scripts/ipkg-make-index.sh . > Packages
           gzip -k Packages
+
+          # Write signing key to temporary file
+          echo "$SIGNING_KEY" > signing.key
+
+          # Sign the package index
+          ../../openwrt-sdk/staging_dir/host/bin/usign -S -m Packages -s signing.key -x Packages.sig
+
+          # Clean up signing key
+          rm signing.key
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -137,6 +150,9 @@ jobs:
             mkdir -p "repo/$arch"
             cp "$arch_dir"/* "repo/$arch/"
           done
+
+          # Copy signing public key to repo
+          cp signing-key.pub repo/
 
       - name: Generate repository index
         run: |
