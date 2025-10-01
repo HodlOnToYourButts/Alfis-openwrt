@@ -21,12 +21,14 @@ jobs:
       fail-fast: false
       matrix:
         arch:
-          - arch: aarch64_generic
-            sdk: aarch64_generic
+          - arch: aarch64_cortex-a53
+            target: mediatek/filogic
           - arch: arm_cortex-a7_neon-vfpv4
-            sdk: arm_cortex-a7_neon-vfpv4
+            target: bcm27xx/bcm2709
+          - arch: mipsel_24kc
+            target: ath79/generic
           - arch: x86_64
-            sdk: x86_64
+            target: x86/64
 
     steps:
       - name: Checkout
@@ -42,19 +44,7 @@ jobs:
       - name: Download OpenWrt SDK
         run: |
           SDK_URL="https://downloads.openwrt.org/releases/${{ env.OPENWRT_VERSION }}/targets/"
-
-          # Determine target/subtarget based on arch
-          case "${{ matrix.arch.arch }}" in
-            aarch64_generic)
-              TARGET="armsr/armv8"
-              ;;
-            arm_cortex-a7_neon-vfpv4)
-              TARGET="bcm27xx/bcm2709"
-              ;;
-            x86_64)
-              TARGET="x86/64"
-              ;;
-          esac
+          TARGET="${{ matrix.arch.target }}"
 
           SDK_FILE=$(curl -s "${SDK_URL}${TARGET}/" | grep -o 'openwrt-sdk-[^"]*Linux-x86_64\.tar\.zst' | head -n1)
           wget "${SDK_URL}${TARGET}/${SDK_FILE}"
