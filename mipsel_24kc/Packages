@@ -1,0 +1,39 @@
+Package: alfis
+Version: 0.8.6-r1
+Depends: libc, ca-certificates
+Source: feeds/base/alfis-packages/alfis
+SourceName: alfis
+License: AGPL-3.0
+LicenseFiles: LICENSE
+Section: net
+Require-User: alfis:alfis
+SourceDateEpoch: 1758316778
+URL: https://github.com/Revertron/Alfis
+Maintainer: HodlOnToYourButts
+Architecture: mips_24kc
+Installed-Size: 4556800
+Filename: alfis_0.8.6-r1_mips_24kc.ipk
+Size: 2035749
+SHA256sum: 594f9098954d7ae57a2f6bdbb8bc3e41b8e39a8bcc03841d962283be3bb55547
+Description:  Alfis is an alternative free identity system - a minimal blockchain 
+ for managing domain names without cryptocurrency. It provides a 
+ decentralized DNS server with blockchain-based domain resolution
+ supporting domains like .anon, .btn, .conf and others.
+
+Package: luci-app-alfis
+Version: 1.0-r1
+Depends: libc, alfis, luci-base
+Source: feeds/base/alfis-packages/luci-app-alfis
+SourceName: luci-app-alfis
+License: AGPL-3.0
+Section: luci
+SourceDateEpoch: 1758316778
+URL: https://github.com/openwrt/luci
+Maintainer: OpenWrt LuCI community
+Architecture: all
+Installed-Size: 30720
+Filename: luci-app-alfis_1.0-r1_all.ipk
+Size: 4648
+SHA256sum: 7a5bd0d4403c9fd68848636cd0d35d2face8bca8cc0edd654ac4bc41de81e1c4
+Description:  LuCI support for Alfis DNS
+

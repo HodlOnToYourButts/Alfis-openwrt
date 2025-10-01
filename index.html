@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alfis OpenWrt Package Repository</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 0 20px; line-height: 1.6; }
+    h1 { color: #333; border-bottom: 2px solid #0066cc; padding-bottom: 10px; }
+    h2 { color: #0066cc; margin-top: 30px; }
+    code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; font-family: "Courier New", monospace; }
+    pre { background: #f4f4f4; padding: 15px; border-radius: 5px; overflow-x: auto; }
+    pre code { background: none; padding: 0; }
+    ul { list-style: none; padding: 0; }
+    ul li { padding: 5px 0; }
+    a { color: #0066cc; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .meta { color: #666; font-size: 0.9em; }
+  </style>
+</head>
+<body>
+  <h1>Alfis OpenWrt Package Repository</h1>
+  <p>Pre-built Alfis packages for OpenWrt 24.10.3</p>
+
+  <h2>Installation</h2>
+  <p>Add this repository to your OpenWrt device:</p>
+  <pre><code># Download and install the signing key
+wget -O /tmp/signing-key.pub https://hodlontoyourbutts.github.io/Alfis-openwrt/signing-key.pub
+opkg-key add /tmp/signing-key.pub
+
+# Determine your architecture
+ARCH=$(opkg print-architecture | awk '{print $2}' | tail -1)
+
+# Add the repository
+echo "src/gz alfis https://hodlontoyourbutts.github.io/Alfis-openwrt/$ARCH" >> /etc/opkg/customfeeds.conf
+
+# Update package lists
+opkg update
+
+# Install packages
+opkg install alfis luci-app-alfis</code></pre>
+
+  <h2>Supported Architectures</h2>
+  <ul>
+    <li><a href="aarch64_cortex-a53/">aarch64_cortex-a53</a></li>
+    <li><a href="arm_cortex-a7_neon-vfpv4/">arm_cortex-a7_neon-vfpv4</a></li>
+    <li><a href="mipsel_24kc/">mipsel_24kc</a></li>
+    <li><a href="x86_64/">x86_64</a></li>
+
+  </ul>
+
+  <h2>Manual Installation</h2>
+  <p>Download the appropriate <code>.ipk</code> files for your architecture and install:</p>
+  <pre><code>opkg install alfis_*.ipk
+opkg install luci-app-alfis_*.ipk</code></pre>
+
+  <h2>Build Information</h2>
+  <ul class="meta">
+    <li>OpenWrt Version: 24.10.3</li>
+    <li>Build Date: 2025-10-01 19:06:08 UTC</li>
+    <li>Commit: <a href="https://github.com/HodlOnToYourButts/Alfis-openwrt/commit/aa39baa169e3d3e8728b72a062116f8b06769a6e">aa39baa169e3d3e8728b72a062116f8b06769a6e</a></li>
+  </ul>
+</body>
+</html>
